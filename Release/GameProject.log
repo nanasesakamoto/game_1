@@ -1,0 +1,19 @@
+﻿  Field.cpp
+  Figure.cpp
+  input.cpp
+  main.cpp
+  mydirect3d.cpp
+  Player.cpp
+  sound.cpp
+c:\users\akapi\onedrive\デスクトップ\0_direct3d_ver.4\sound.cpp(45): warning C4018: '<': signed と unsigned の数値を比較しようとしました。
+c:\users\akapi\onedrive\デスクトップ\0_direct3d_ver.4\sound.cpp(129): warning C4244: '=': 'float' から 'UINT32' への変換です。データが失われる可能性があります。
+c:\users\akapi\onedrive\デスクトップ\0_direct3d_ver.4\sound.cpp(388): warning C4018: '<': signed と unsigned の数値を比較しようとしました。
+c:\users\akapi\onedrive\デスクトップ\0_direct3d_ver.4\sound.cpp(411): warning C4244: '+=': 'double' から 'float' への変換です。データが失われる可能性があります。
+  sprite.cpp
+  Stage.cpp
+  system_timer.cpp
+  texture.cpp
+  コード生成しています。
+  All 450 functions were compiled because no usable IPDB/IOBJ from previous compilation was found.
+  コード生成が終了しました。
+  GameProject.vcxproj -> C:\Users\akapi\OneDrive\デスクトップ\0_Direct3D_ver.4\Release\GameProject.exe

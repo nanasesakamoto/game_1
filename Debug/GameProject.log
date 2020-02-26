@@ -1,0 +1,12 @@
+﻿  Enemy.cpp
+  Player.cpp
+  Stage.cpp
+c:\users\mknn7\desktop\0_direct3d_ver.4\stage.cpp(32): warning C4244: '=': 'int' から 'float' への変換です。データが失われる可能性があります。
+c:\users\mknn7\desktop\0_direct3d_ver.4\stage.cpp(33): warning C4244: '=': 'int' から 'float' への変換です。データが失われる可能性があります。
+c:\users\mknn7\desktop\0_direct3d_ver.4\stage.cpp(68): warning C4456: 'i' を宣言すると、以前のローカル宣言が隠蔽されます
+  c:\users\mknn7\desktop\0_direct3d_ver.4\stage.cpp(64): note: 'i' の宣言を確認してください
+c:\users\mknn7\desktop\0_direct3d_ver.4\stage.cpp(74): warning C4456: 'i' を宣言すると、以前のローカル宣言が隠蔽されます
+  c:\users\mknn7\desktop\0_direct3d_ver.4\stage.cpp(64): note: 'i' の宣言を確認してください
+  main.cpp
+  コードを生成中...
+  GameProject.vcxproj -> C:\Users\mknn7\Desktop\0_Direct3D_ver.4\Debug\GameProject.exe
