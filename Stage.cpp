@@ -48,15 +48,25 @@ void StageInit() {
 
 	awa[10].isReset = true;
 	awa[89].isGoal = true;
-
 }
 
 void StageUpdate() {
 	if (Keyboard_IsTrigger(DIK_SPACE)) {
 		for (int i = 0; i < awa_MAX; i++) {
 			awa[i].isUse = true;
+			awaFlag[i] = 0;
 		}
 	}
+	if (Keyboard_IsTrigger(DIK_R)) {
+			StageUnInit();
+			PlayerUnInit();
+			EnemyUnInit();
+
+			StageInit();
+			PlayerInit();
+			EnemyInit();
+	}
+
 	Pold = GetOldPlayerPos();
 	Pnow = GetNowPlayerPos();
 	Eold = GetOldEnemyPos();
@@ -67,6 +77,7 @@ void StageUpdate() {
 			Pold = -1;
 			for (int i = 0; i < awa_MAX; i++) {
 				awa[i].isUse = true;
+				awaFlag[i] = 0;
 			}
 		}
 		if (Pnow == 89) {
