@@ -10,6 +10,7 @@
 static int Pold = -1;
 static int Pnow = -1;
 static int Eold = -1;
+static bool Goal;
 
 Plane awa[awa_MAX];
 int awaFlag[awa_MAX];
@@ -19,6 +20,7 @@ void StageInit() {
 	Pold = -1;
 	Pnow = -1;
 	Eold = -1;
+	Goal = false;
 
 	int height = 0;
 	int width = 0;
@@ -82,10 +84,7 @@ void StageUpdate() {
 		}
 		if (Pnow == 89) {
 			Pnow = -1;
-			for (int i = 0; i < awa_MAX; i++) {
-				awa[i].isUse = false;
-				awaFlag[i] = 1;
-			}
+			Goal = true;
 		}
 
 		if (Pold != -1)
@@ -101,6 +100,16 @@ void StageUpdate() {
 			Eold = -1;
 		}
 
+	}
+
+	if (Goal == true) {
+		for (int i = 0; i < awa_MAX; i++) {
+			if (awa[i].isUse == true) {
+				awa[i].isUse = false;
+				awaFlag[i] = 1;
+			}
+		}
+		Goal = false;
 	}
 }
 
