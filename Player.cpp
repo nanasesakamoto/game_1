@@ -4,7 +4,7 @@
 #include"texture.h"
 #include<stdlib.h>
 #include"sound.h"
-
+#include"Enemy.h"
 
 
 Cube Player;
@@ -17,17 +17,15 @@ void PlayerInit() {
 	for (int i = 0; i < awa_MAX; i++) {
 		NL[i] = GetStagePos(i);
 	}
-	Player.position.x = NL[8].x;
+	Player.position.x = NL[3].x;
 	Player.position.y =0;
-	Player.position.z = NL[8].z;
+	Player.position.z = NL[3].z;
 
-	//プレイヤーの初期位置
-	nowPos = 8;
-
+	nowPos = 3;
 	oldPos = -1;
 }
 void PlayerUpdate() {
-	if (GetawaResetFlag(nowPos) == true) {
+	if (nowPos == 10) {
 		oldPos = -1;
 	}
 	if (GetawaFlag(nowPos) == true)
@@ -39,6 +37,7 @@ void PlayerUpdate() {
 					oldPos = nowPos;
 					nowPos -= 1;
 					Audio::GetInstance().PlaySE("paan.wav");
+					EnemyMove();
 				}
 		}
 		if (Keyboard_IsTrigger(DIK_RIGHT)) {
@@ -48,6 +47,7 @@ void PlayerUpdate() {
 					oldPos = nowPos;
 					nowPos += 1;
 					Audio::GetInstance().PlaySE("paan.wav");
+					EnemyMove();
 				}
 			}
 		}
@@ -58,6 +58,7 @@ void PlayerUpdate() {
 					oldPos = nowPos;
 					nowPos += Stage_width + 1;
 					Audio::GetInstance().PlaySE("paan.wav");
+					EnemyMove();
 				}
 			}
 		}
@@ -68,6 +69,7 @@ void PlayerUpdate() {
 					oldPos = nowPos;
 					nowPos -= Stage_width + 1;
 					Audio::GetInstance().PlaySE("paan.wav");
+					EnemyMove();
 				}
 			}
 		}
