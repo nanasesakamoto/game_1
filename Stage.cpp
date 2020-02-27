@@ -70,11 +70,15 @@ void StageUpdate() {
 			EnemyInit();
 	}
 
+	//プレイヤーの現在地
 	Pold = GetOldPlayerPos();
+	//プレイヤーの一昔前の位置
 	Pnow = GetNowPlayerPos();
+	//エネミーの現在地
 	Eold = GetOldEnemyPos();
 
 	for (int i = 0; i < awa_MAX; i++) {
+		//リセットを踏んだ時
 		if (Pnow == i && awa[i].isReset == true) {
 			Pnow = -1;
 			Pold = -1;
@@ -83,17 +87,19 @@ void StageUpdate() {
 				awaFlag[i] = 0;
 			}
 		}
+		//ゴールを踏んだ時
 		if (Pnow == i && awa[i].isGoal == true) {
 			Pnow = -1;
 			Goal = true;
 		}
-
+		//プレイヤーが泡を踏んだ時
 		if (Pold != -1)
 		{
 			awa[Pold].isUse = false;
 			awaFlag[Pold] += 1;
 			Pold = -1;
 		}
+		//エネミーが泡を踏んだ時
 		if (Eold != -1)
 		{
 			awa[Eold].isUse = false;
@@ -108,6 +114,7 @@ void StageUpdate() {
 			if (awa[i].isUse == true) {
 				awa[i].isUse = false;
 				awaFlag[i] = 1;
+				Audio::GetInstance().PlaySE("paan.wav");
 			}
 		}
 		Goal = false;
