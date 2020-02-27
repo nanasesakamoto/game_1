@@ -21,11 +21,13 @@ void PlayerInit() {
 	Player.position.y =0;
 	Player.position.z = NL[8].z;
 
+	//プレイヤーの初期位置
 	nowPos = 8;
+
 	oldPos = -1;
 }
 void PlayerUpdate() {
-	if (nowPos == 10) {
+	if (GetawaResetFlag(nowPos) == true) {
 		oldPos = -1;
 	}
 	if (GetawaFlag(nowPos) == true)

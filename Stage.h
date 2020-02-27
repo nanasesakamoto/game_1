@@ -14,3 +14,4 @@ void StageUnInit();
 
 Plane GetStagePos(int i);
 bool GetawaFlag(int i);
+bool GetawaResetFlag(int i);

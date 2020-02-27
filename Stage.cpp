@@ -47,8 +47,9 @@ void StageInit() {
 		awa[i].rotation = D3DXVECTOR3(0, 0, 0);
 		awa[i].scale = D3DXVECTOR3(2, 0, 2);
 	}
-
+	//リセットマス
 	awa[10].isReset = true;
+	//ゴールマス
 	awa[89].isGoal = true;
 }
 
@@ -74,7 +75,7 @@ void StageUpdate() {
 	Eold = GetOldEnemyPos();
 
 	for (int i = 0; i < awa_MAX; i++) {
-		if (Pnow == 10) {
+		if (Pnow == i && awa[i].isReset == true) {
 			Pnow = -1;
 			Pold = -1;
 			for (int i = 0; i < awa_MAX; i++) {
@@ -82,7 +83,7 @@ void StageUpdate() {
 				awaFlag[i] = 0;
 			}
 		}
-		if (Pnow == 89) {
+		if (Pnow == i && awa[i].isGoal == true) {
 			Pnow = -1;
 			Goal = true;
 		}
@@ -117,10 +118,12 @@ void StageDraw() {
 
 	for (int i = 0; i < awa_MAX; i++) {
 
-		if (i == 10) {
-			awa[i].Draw(TEXTURE_INDEX_RESET, 255);
+		if (awa[i].isReset == true) {
+			if (awa[i].isUse == true) {
+				awa[i].Draw(TEXTURE_INDEX_RESET, 255);
+			}
 		}
-		else if (i == 89) {
+		else if (awa[i].isGoal == true) {
 			awa[i].Draw(TEXTURE_INDEX_GOAL, 255);
 		}
 		else if (awa[i].isUse == true) {
@@ -154,4 +157,7 @@ Plane GetStagePos(int i) {
 bool GetawaFlag(int i)
 {
 	return awa[i].isUse;
+}
+bool GetawaResetFlag(int i) {
+	return awa[i].isReset;
 }
