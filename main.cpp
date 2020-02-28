@@ -272,7 +272,8 @@ bool Initialize(void)
 	if (Texture_Load() > 0) {
 		MessageBox(g_hWnd, "いくつか読み込めなかったテクスチャファイルがあります", "エラー", MB_OK);
 	}
-
+	//sound初期化
+	InitSound(g_hWnd);
 	FieldInit();
 	StageInit();
 	PlayerInit();
@@ -344,6 +345,7 @@ void Draw(void)
 // ゲームの終了処理
 void Finalize(void)
 {
+	UninitSound();
     // テクスチャの解放
     Texture_Release();
     // Direct3Dラッパーモジュールの終了処理

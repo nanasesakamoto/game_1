@@ -12,6 +12,8 @@ static int Pnow = -1;
 static int Eold = -1;
 static bool Goal;
 
+static int SEcount;
+
 Plane awa[awa_MAX];
 int awaFlag[awa_MAX];
 int timer[awa_MAX];
@@ -21,9 +23,10 @@ void StageInit() {
 	Pnow = -1;
 	Eold = -1;
 	Goal = false;
+	SEcount = 0;
 
-	int height = 0;
-	int width = 0;
+	float height = 0;
+	float width = 0;
 
 	for (int i = 0; i < awa_MAX; i++) {
 		if (width > Stage_width) {
@@ -82,42 +85,47 @@ void StageUpdate() {
 		if (Pnow == i && awa[i].isReset == true) {
 			Pnow = -1;
 			Pold = -1;
-			for (int i = 0; i < awa_MAX; i++) {
-				awa[i].isUse = true;
-				awaFlag[i] = 0;
+			PlaySound(SOUND_SE_RESET);
+			for (int j = 0; j < awa_MAX; j++) {
+				awa[j].isUse = true;
+				awaFlag[j] = 0;
 			}
 		}
 		//ゴールを踏んだ時
-		if (Pnow == i && awa[i].isGoal == true) {
+		if (Pnow == i && awa[i].isGoal == true && SEcount == 0) {
 			Pnow = -1;
 			Goal = true;
 		}
 		//プレイヤーが泡を踏んだ時
-		if (Pold != -1)
+		if (Pold != -1 && awaFlag[Pold] == 0 && awa[Pnow].isReset == false)
 		{
 			awa[Pold].isUse = false;
 			awaFlag[Pold] += 1;
 			Pold = -1;
+			PlaySound(SOUND_SE_PAAN);
 		}
 		//エネミーが泡を踏んだ時
-		if (Eold != -1)
+		if (Eold != -1 && awaFlag[Eold] == 0 && Pnow == i && awa[Pnow].isReset == false)
 		{
 			awa[Eold].isUse = false;
 			awaFlag[Eold] += 1;
 			Eold = -1;
+			PlaySound(SOUND_SE_PAAN);
 		}
 
 	}
 
 	if (Goal == true) {
-		for (int i = 0; i < awa_MAX; i++) {
-			if (awa[i].isUse == true) {
-				awa[i].isUse = false;
-				awaFlag[i] = 1;
-				Audio::GetInstance().PlaySE("paan.wav");
-			}
+		if (awa[SEcount].isUse == true) {
+			awa[SEcount].isUse = false;
+			awaFlag[SEcount] = 1;
+			PlaySound(SOUND_SE_PAAN);
 		}
-		Goal = false;
+		SEcount += 1;
+
+		if (SEcount >= awa_MAX) {
+			Goal = false;
+		}
 	}
 }
 

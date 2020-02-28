@@ -1,434 +1,295 @@
-//sound.cpp
-
+//=============================================================================
+//
+// サウンド処理 [sound.cpp]
+//
+//=============================================================================
+#include <XAudio2.h>
+#include <mmsystem.h>
 #include "sound.h"
-#include "system_timer.h"
 
-Audio Audio::instance;
+#pragma comment (lib, "xaudio2.lib") 
+#pragma comment (lib, "winmm.lib") 
 
-Audio::Audio()
+//*****************************************************************************
+// パラメータ構造体定義
+//*****************************************************************************
+typedef struct
 {
-	//宣言の仕方
-	//宣言する必要なし
+	const char *pFilename;	// ファイル名
+	int nCntLoop;		// ループカウント
+} SOUNDPARAM;
 
-	//使用する曲をここに追加していく
-	audioName =
-	{
-		{"paan.wav"}
-	};
+//*****************************************************************************
+// プロトタイプ宣言
+//*****************************************************************************
+HRESULT CheckChunk(HANDLE hFile, DWORD format, DWORD *pChunkSize, DWORD *pChunkDataPosition);
+HRESULT ReadChunkData(HANDLE hFile, void *pBuffer, DWORD dwBuffersize, DWORD dwBufferoffset);
 
-	//エラー判定をすべてになってくれる変数、たぶん大事
+//*****************************************************************************
+// グローバル変数
+//*****************************************************************************
+IXAudio2 *g_pXAudio2 = NULL;								// XAudio2オブジェクトへのインターフェイス
+IXAudio2MasteringVoice *g_pMasteringVoice = NULL;			// マスターボイス
+IXAudio2SourceVoice *g_apSourceVoice[SOUND_LABEL_MAX] = {};	// ソースボイス
+BYTE *g_apDataAudio[SOUND_LABEL_MAX] = {};					// オーディオデータ
+DWORD g_aSizeAudio[SOUND_LABEL_MAX] = {};					// オーディオデータサイズ
+
+// 各音素材のパラメータ
+//-1がループ、0が一回のみ
+SOUNDPARAM g_aParam[SOUND_LABEL_MAX] ={
+	{"asset/sound/se/paan.wav", 0},  
+	{"asset/sound/se/reset.wav", 0},
+};
+
+//=============================================================================
+// 初期化処理
+//=============================================================================
+HRESULT InitSound(HWND hWnd)
+{
 	HRESULT hr;
 
-	//COMの初期化
+	// COMライブラリの初期化
 	CoInitializeEx(NULL, COINIT_MULTITHREADED);
 
-	//XAudio2の初期化
-	//ここでエラーになった際はpXAudio2にロクな値が入っていないのでアクセスしないこと
-	pXAudio2 = NULL;
-	hr = XAudio2Create(&pXAudio2);
-
-	//マスターボイスの取得
-	//PCが音を出せる環境でない場合はここでエラーが出る可能性あり
-	pMasteringVoice = NULL;
-	pXAudio2->CreateMasteringVoice(&pMasteringVoice);
-
-	//入れられたものが本当にサウンドデータなのかを判定して、正しければソースボイスを制作する
-	for (int countAudio = 0; countAudio < AUDIO_COUNT; countAudio++)
-			MakeSourceVoice(countAudio,countAudio);
-}
-
-Audio::~Audio()
-{
-	//宣言の仕方
-	//宣言する必要なし
-
-	for (int i = 0; i < pSourceVoice.size(); i++)
+	// XAudio2オブジェクトの作成
+	hr = XAudio2Create(&g_pXAudio2, 0);
+	if(FAILED(hr))
 	{
-		// ソースボイスの破棄
-		pSourceVoice[i]->DestroyVoice();
-		pSourceVoice[i] = NULL;
+		MessageBox(hWnd, "XAudio2オブジェクトの作成に失敗！", "警告！", MB_ICONWARNING);
 
-		// オーディオデータの開放
+		// COMライブラリの終了処理
+		CoUninitialize();
 
-		free(pDataAudio[i]);
+		return E_FAIL;
+	}
+	
+	// マスターボイスの生成
+	hr = g_pXAudio2->CreateMasteringVoice(&g_pMasteringVoice);
+	if(FAILED(hr))
+	{
+		MessageBox(hWnd, "マスターボイスの生成に失敗！", "警告！", MB_ICONWARNING);
 
-		pDataAudio[i] = NULL;
+		if(g_pXAudio2)
+		{
+			// XAudio2オブジェクトの開放
+			g_pXAudio2->Release();
+			g_pXAudio2 = NULL;
+		}
+
+		// COMライブラリの終了処理
+		CoUninitialize();
+
+		return E_FAIL;
 	}
 
-	//マスターボイスの破棄
-	pMasteringVoice->DestroyVoice();
+	// サウンドデータの初期化
+	for(int nCntSound = 0; nCntSound < SOUND_LABEL_MAX; nCntSound++)
+	{
+		HANDLE hFile;
+		DWORD dwChunkSize = 0;
+		DWORD dwChunkPosition = 0;
+		DWORD dwFiletype;
+		WAVEFORMATEXTENSIBLE wfx;
+		XAUDIO2_BUFFER buffer;
 
-	//XAudio2の破棄
-	SAFE_RELEASE(pXAudio2);
+		// バッファのクリア
+		memset(&wfx, 0, sizeof(WAVEFORMATEXTENSIBLE));
+		memset(&buffer, 0, sizeof(XAUDIO2_BUFFER));
 
-	//COMの破棄
+		// サウンドデータファイルの生成
+		hFile = CreateFile(g_aParam[nCntSound].pFilename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+		if(hFile == INVALID_HANDLE_VALUE)
+		{
+			MessageBox(hWnd, "サウンドデータファイルの生成に失敗！(1)", "警告！", MB_ICONWARNING);
+			return HRESULT_FROM_WIN32(GetLastError());
+		}
+		if(SetFilePointer(hFile, 0, NULL, FILE_BEGIN) == INVALID_SET_FILE_POINTER)
+		{// ファイルポインタを先頭に移動
+			MessageBox(hWnd, "サウンドデータファイルの生成に失敗！(2)", "警告！", MB_ICONWARNING);
+			return HRESULT_FROM_WIN32(GetLastError());
+		}
+	
+		// WAVEファイルのチェック
+		hr = CheckChunk(hFile, 'FFIR', &dwChunkSize, &dwChunkPosition);
+		if(FAILED(hr))
+		{
+			MessageBox(hWnd, "WAVEファイルのチェックに失敗！(1)", "警告！", MB_ICONWARNING);
+			return S_FALSE;
+		}
+		hr = ReadChunkData(hFile, &dwFiletype, sizeof(DWORD), dwChunkPosition);
+		if(FAILED(hr))
+		{
+			MessageBox(hWnd, "WAVEファイルのチェックに失敗！(2)", "警告！", MB_ICONWARNING);
+			return S_FALSE;
+		}
+		if(dwFiletype != 'EVAW')
+		{
+			MessageBox(hWnd, "WAVEファイルのチェックに失敗！(3)", "警告！", MB_ICONWARNING);
+			return S_FALSE;
+		}
+	
+		// フォーマットチェック
+		hr = CheckChunk(hFile, ' tmf', &dwChunkSize, &dwChunkPosition);
+		if(FAILED(hr))
+		{
+			MessageBox(hWnd, "フォーマットチェックに失敗！(1)", "警告！", MB_ICONWARNING);
+			return S_FALSE;
+		}
+		hr = ReadChunkData(hFile, &wfx, dwChunkSize, dwChunkPosition);
+		if(FAILED(hr))
+		{
+			MessageBox(hWnd, "フォーマットチェックに失敗！(2)", "警告！", MB_ICONWARNING);
+			return S_FALSE;
+		}
+
+		// オーディオデータ読み込み
+		hr = CheckChunk(hFile, 'atad', &g_aSizeAudio[nCntSound], &dwChunkPosition);
+		if(FAILED(hr))
+		{
+			MessageBox(hWnd, "オーディオデータ読み込みに失敗！(1)", "警告！", MB_ICONWARNING);
+			return S_FALSE;
+		}
+		g_apDataAudio[nCntSound] = (BYTE*)malloc(g_aSizeAudio[nCntSound]);
+		hr = ReadChunkData(hFile, g_apDataAudio[nCntSound], g_aSizeAudio[nCntSound], dwChunkPosition);
+		if(FAILED(hr))
+		{
+			MessageBox(hWnd, "オーディオデータ読み込みに失敗！(2)", "警告！", MB_ICONWARNING);
+			return S_FALSE;
+		}
+	
+		// ソースボイスの生成
+		hr = g_pXAudio2->CreateSourceVoice(&g_apSourceVoice[nCntSound], &(wfx.Format));
+		if(FAILED(hr))
+		{
+			MessageBox(hWnd, "ソースボイスの生成に失敗！", "警告！", MB_ICONWARNING);
+			return S_FALSE;
+		}
+
+		// バッファの値設定
+		memset(&buffer, 0, sizeof(XAUDIO2_BUFFER));
+		buffer.AudioBytes = g_aSizeAudio[nCntSound];
+		buffer.pAudioData = g_apDataAudio[nCntSound];
+		buffer.Flags      = XAUDIO2_END_OF_STREAM;
+		buffer.LoopCount  = g_aParam[nCntSound].nCntLoop;
+
+		// オーディオバッファの登録
+		g_apSourceVoice[nCntSound]->SubmitSourceBuffer(&buffer);
+	}
+
+	return S_OK;
+}
+
+//=============================================================================
+// 終了処理
+//=============================================================================
+void UninitSound(void)
+{
+	// 一時停止
+	for(int nCntSound = 0; nCntSound < SOUND_LABEL_MAX; nCntSound++)
+	{
+		if(g_apSourceVoice[nCntSound])
+		{
+			// 一時停止
+			g_apSourceVoice[nCntSound]->Stop(0);
+	
+			// ソースボイスの破棄
+			g_apSourceVoice[nCntSound]->DestroyVoice();
+			g_apSourceVoice[nCntSound] = NULL;
+	
+			// オーディオデータの開放
+			free(g_apDataAudio[nCntSound]);
+			g_apDataAudio[nCntSound] = NULL;
+		}
+	}
+	
+	// マスターボイスの破棄
+	g_pMasteringVoice->DestroyVoice();
+	g_pMasteringVoice = NULL;
+	
+	if(g_pXAudio2)
+	{
+		// XAudio2オブジェクトの開放
+		g_pXAudio2->Release();
+		g_pXAudio2 = NULL;
+	}
+	
+	// COMライブラリの終了処理
 	CoUninitialize();
 }
 
-//BGMを流す関数、止めない限りループする
-void Audio::PlayBGM(string fName,float vol,float time)
+//=============================================================================
+// セグメント再生(再生中なら停止)
+//=============================================================================
+HRESULT PlaySound(SOUND_LABEL label)
 {
-	//宣言の仕方
-	//Audio::GetInstance().PlayBGM("使いたい曲名.wav");
-	//今のところwavしか再生できないので注意
-
 	XAUDIO2_VOICE_STATE xa2state;
 	XAUDIO2_BUFFER buffer;
-	int playFile = NULL;
-
-	//バッファのクリア
-	memset(&buffer, 0, sizeof(XAUDIO2_BUFFER));
-
-	//増やした配列内のソースボイスが働いていなかったら削除する
-	for (int i = pSourceVoice.size(); i < AUDIO_COUNT; i--)
-	{
-		//後ろから現在の状態を取得する
-		pSourceVoice[i - 1]->GetState(&xa2state);
-		if (xa2state.BuffersQueued == 0)
-		{
-			//使われていなければ削除する
-			pSourceVoice[i - 1]->DestroyVoice();
-			pSourceVoice.pop_back();
-			fileVol.pop_back();
-		}
-		else
-		{
-			break;
-		}
-	}
-
-
-	//i番目に使いたいソースボイスが入っている
-	//使用中なら複製、そうでなければここを使って音を出す
-	for(int i = 0; i < AUDIO_COUNT; i++)
-	{
-		//宣言されたファイル名を比較
-		if(fName.compare(audioName[i]) == 0)
-		{
-			pSourceVoice[i]->GetState(&xa2state);
-			if (xa2state.BuffersQueued == 0)
-			{
-				//使用されていないのでここを使って曲を再生
-				playFile = i;
-			}
-			else
-			{
-				//既に使用されているので新しく配列の枠を作り、そこで再生
-				playFile = pSourceVoice.size();
-				MakeSourceVoice(i, playFile);
-			}
-			break;
-		}
-	}
 
 	// バッファの値設定
-	buffer.AudioBytes = SizeAudio[playFile];
-	buffer.pAudioData = pDataAudio[playFile];
-	buffer.Flags = XAUDIO2_END_OF_STREAM;
-	buffer.LoopCount = XAUDIO2_LOOP_INFINITE;
-	buffer.PlayBegin = time * 44100;
-
-	pSourceVoice[playFile]->SubmitSourceBuffer(&buffer);
-
-	//セットボリュームの回数を減らしたい
-	if (fileVol[playFile] != vol)
-	{
-		fileVol[playFile] = vol;
-		pSourceVoice[playFile]->SetVolume(vol);
-	}
-
-	pSourceVoice[playFile]->Start(0);
-}
-
-//SEを流す関数、1回再生され次第音を止める
-void Audio::PlaySE(string fName, float vol)
-{
-	//宣言の仕方
-	//Audio::GetInstance().PlaySE("使いたい曲名.wav");
-	//今のところwavしか再生できないので注意
-	
-	XAUDIO2_VOICE_STATE xa2state;
-	XAUDIO2_BUFFER buffer;
-	int playFile = NULL;
-
-	//バッファのクリア
 	memset(&buffer, 0, sizeof(XAUDIO2_BUFFER));
+	buffer.AudioBytes = g_aSizeAudio[label];
+	buffer.pAudioData = g_apDataAudio[label];
+	buffer.Flags      = XAUDIO2_END_OF_STREAM;
+	buffer.LoopCount  = g_aParam[label].nCntLoop;
 
+	// 状態取得
+	g_apSourceVoice[label]->GetState(&xa2state);
+	if(xa2state.BuffersQueued != 0)
+	{// 再生中
+		// 一時停止
+		g_apSourceVoice[label]->Stop(0);
 
-	//増やした配列内のソースボイスが働いていなかったら削除する
-	for (int i = pSourceVoice.size(); i > AUDIO_COUNT; i--)
-	{
-		//後ろから現在の状態を取得する
-		pSourceVoice[i - 1]->GetState(&xa2state);
-		if (xa2state.BuffersQueued == 0)
-		{
-			//使われていなければ削除する
-			pSourceVoice[i - 1]->DestroyVoice();
-			pSourceVoice.pop_back();
-			fileVol.pop_back();
-		}
-		else
-			break;
+		// オーディオバッファの削除
+		g_apSourceVoice[label]->FlushSourceBuffers();
 	}
 
+	// オーディオバッファの登録
+	g_apSourceVoice[label]->SubmitSourceBuffer(&buffer);
 
-	//i番目に使いたいソースボイスが入っている
-	//使用中なら複製、そうでなければここを使って音を出す
-	for (int i = 0; i < AUDIO_COUNT; i++)
-	{
-		//宣言されたファイル名を比較
-		if (fName.compare(audioName[i]) == 0)
-		{
-			pSourceVoice[i]->GetState(&xa2state);
-			if (xa2state.BuffersQueued == 0)
-			{
-				//使用されていないのでここを使って曲を再生
-				playFile = i;
-			}
-			else
-			{
-				//既に使用されているので新しく配列の枠を作り、そこで再生
-				playFile = pSourceVoice.size();
-				MakeSourceVoice(i, playFile);
-			}
-			break;
-		}
-	}
+	// 再生
+	g_apSourceVoice[label]->Start(0);
 
-	// バッファの値設定
-	buffer.AudioBytes = SizeAudio[playFile];
-	buffer.pAudioData = pDataAudio[playFile];
-	buffer.Flags = XAUDIO2_END_OF_STREAM;
-	buffer.LoopCount = 0;
-
-	pSourceVoice[playFile]->SubmitSourceBuffer(&buffer);
-
-	//セットボリュームの回数を減らしたい
-	//if (fileVol[playFile] != vol)
-	//{
-	//	fileVol[playFile] = vol;
-	//	pSourceVoice[playFile]->SetVolume(vol);
-	//}
-	pSourceVoice[playFile]->SetVolume(vol);
-	pSourceVoice[playFile]->Start(0);
+	return S_OK;
 }
 
-//今流れている曲を止める、フェード機能付き
-void Audio::StopBGM(float time)
-{
-	//スレッド増やそう大作戦
-	//ここで音量を減らしていく関数を呼び出す
-	//一応fleashSourcebufferもしておく
-
-	//float volume;
-	thread fade(&Audio::FadeAudio, this, time);
-	fade.detach();
-}
-
-//SEの音量を0にする関数
-void Audio::ChangeVolume(string fName,float vol)
-{
-	//引数の曲が再生されているかどうかを調べて、されていれば音量を変更する
-	for (int i = 0; i < AUDIO_COUNT; i++)
-	{
-		//宣言されたファイル名を比較
-		if (fName.compare(audioName[i]) == 0)
-		{
-			pSourceVoice[i]->GetState(&xa2state);
-			if (xa2state.BuffersQueued != 0)
-			{
-				//現在再生中の確認は取れたのでvolを変更する
-				pSourceVoice[i]->SetVolume(vol);
-			}
-			break;
-		}
-	}
-
-}
-
-//一瞬で音を止める関数
-void Audio::StopBGM(string fName)
-{
-	//引数の曲が再生されているかどうかを調べて、されていれば音量を変更する
-	for (int i = 0; i < AUDIO_COUNT; i++)
-	{
-		//宣言されたファイル名を比較
-		if (fName.compare(audioName[i]) == 0)
-		{
-			pSourceVoice[i]->GetState(&xa2state);
-			if (xa2state.BuffersQueued != 0)
-			{
-				//現在再生中の確認は取れたので止める
-				pSourceVoice[i]->Stop();
-				pSourceVoice[i]->FlushSourceBuffers();
-			}
-			break;
-		}
-	}
-}
-
-//ソースボイスを作成する
-void Audio::MakeSourceVoice(int fileplace, int sourceplace)
-{
-	//宣言の仕方
-	//PlayBGM等で使っているだけなので必要なし
-
-	HRESULT hr;
-	HANDLE hFile;
-	DWORD dwChunkSize = 0;
-	DWORD dwChunkPosition = 0;
-	DWORD dwFiletype;
-	WAVEFORMATEXTENSIBLE wfx;
-	XAUDIO2_BUFFER buffer;
-
-	//ソースボイス配列の枠作成
-	pSourceVoice.push_back(NULL);
-	pDataAudio.push_back(NULL);
-	SizeAudio.push_back(NULL);
-
-	//fileVolの初期化
-	fileVol.push_back(0.0);
-
-	//バッファのクリア
-	memset(&wfx, 0, sizeof(WAVEFORMATEXTENSIBLE));
-	memset(&buffer, 0, sizeof(XAUDIO2_BUFFER));
-
-	// サウンドデータファイルの生成
-	hFile = CreateFile(FitFileName(audioName[fileplace]).c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
-	if (hFile == INVALID_HANDLE_VALUE)
-	{
-		MessageBox(NULL, "一部の音楽ファイル読み込みに失敗しました。", NULL, MB_OK);	//メッセージ表示
-		return;
-	}
-	//(LPCWSTR)FitFileName(audioName[countAudio]).c_str()
-
-	if (SetFilePointer(hFile, 0, NULL, FILE_BEGIN) == INVALID_SET_FILE_POINTER)
-	{// ファイルポインタを先頭に移動
-		MessageBox(NULL, "一部の音楽ファイル読み込みに失敗しました。", NULL, MB_OK);	//メッセージ表示
-		return;
-	}
-
-	// WAVEファイルのチェック
-	hr = CheckChunk(hFile, 'FFIR', &dwChunkSize, &dwChunkPosition);
-	if (FAILED(hr))
-	{
-		MessageBox(NULL, "一部の音楽ファイル読み込みに失敗しました。", NULL, MB_OK);	//メッセージ表示
-		return;
-	}
-	hr = ReadChunkData(hFile, &dwFiletype, sizeof(DWORD), dwChunkPosition);
-	if (FAILED(hr))
-	{
-		MessageBox(NULL, "一部の音楽ファイル読み込みに失敗しました。", NULL, MB_OK);	//メッセージ表示
-		return;
-	}
-	if (dwFiletype != 'EVAW')
-	{
-		MessageBox(NULL, "一部の音楽ファイル読み込みに失敗しました。", NULL, MB_OK);	//メッセージ表示
-		return;
-	}
-
-	// フォーマットチェック
-	hr = CheckChunk(hFile, ' tmf', &dwChunkSize, &dwChunkPosition);
-	if (FAILED(hr))
-	{
-		MessageBox(NULL, "一部の音楽ファイル読み込みに失敗しました。", NULL, MB_OK);	//メッセージ表示
-		return;
-	}
-	hr = ReadChunkData(hFile, &wfx, dwChunkSize, dwChunkPosition);
-	if (FAILED(hr))
-	{
-		MessageBox(NULL, "一部の音楽ファイル読み込みに失敗しました。", NULL, MB_OK);	//メッセージ表示
-		return;
-	}
-
-	// オーディオデータ読み込み
-	hr = CheckChunk(hFile, 'atad', &SizeAudio[sourceplace], &dwChunkPosition);
-	if (FAILED(hr))
-	{
-		MessageBox(NULL, "一部の音楽ファイル読み込みに失敗しました。", NULL, MB_OK);	//メッセージ表示
-		return;
-	}
-
-	pDataAudio[sourceplace] = (BYTE*)malloc(SizeAudio[sourceplace]);
-
-	hr = ReadChunkData(hFile, pDataAudio[sourceplace], SizeAudio[sourceplace], dwChunkPosition);
-	if (FAILED(hr))
-	{
-		MessageBox(NULL, "一部の音楽ファイル読み込みに失敗しました。", NULL, MB_OK);	//メッセージ表示
-		return;
-	}
-
-	// ソースボイスの生成
-	hr = pXAudio2->CreateSourceVoice(&pSourceVoice[sourceplace], &(wfx.Format));
-	if (FAILED(hr))
-	{
-		MessageBox(NULL, "ソースボイスの作成に失敗しました。", NULL, MB_OK);	//メッセージ表示
-		return;
-	}
-
-}
-
-//ファイル名を少しだけ簡略化するやつ
-string FitFileName(string fName)
-{
-	string fileFrontName = ("asset/sound/");
-
-	const string  soundName = fileFrontName += fName;
-
-	return soundName;
-}
-
-//マルチスレッド用、ここでフェードアウトしていく
-void Audio::FadeAudio(float time)
+//=============================================================================
+// セグメント停止(ラベル指定)
+//=============================================================================
+void StopSound(SOUND_LABEL label)
 {
 	XAUDIO2_VOICE_STATE xa2state;
 
-	//どこの曲を消すかを探す
-	int i;
-	for (i = 0; i < pSourceVoice.size() - 1; i++)
-	{
-		pSourceVoice[i]->GetState(&xa2state);
-		if (xa2state.BuffersQueued != 0)
-		{
-			//BGMを上に置いておくことで先に発見し止めてもらう予定(手抜き)
-			break;
-		}
+	// 状態取得
+	g_apSourceVoice[label]->GetState(&xa2state);
+	if(xa2state.BuffersQueued != 0)
+	{// 再生中
+		// 一時停止
+		g_apSourceVoice[label]->Stop(0);
+
+		// オーディオバッファの削除
+		g_apSourceVoice[label]->FlushSourceBuffers();
 	}
-
-	//再生中のソースボイスが見つけられなかった場合は終了
-	if (i == pSourceVoice.size())
-		return;
-
-	float volume = 1.0f;
-	float minusVol = fileVol[i] / FADE_COUNT;
-
-	SystemTimer S;
-	float fadeTime = 0.0f;
-	S.StartTimer();
-
-	while(1)
-	{
-		fadeTime += S.GetTime();
-
-		//音が完全に消えていることを確認したら抜ける
-		if(fileVol[i] < 0.0f)
-		{
-			pSourceVoice[i]->Stop();
-			// オーディオバッファの削除
-			pSourceVoice[i]->FlushSourceBuffers();
-
-			break;
-		}
-		if (fadeTime > time / 6)
-		{
-			fileVol[i] -= minusVol;
-			fadeTime = 0.0f;
-			pSourceVoice[i]->SetVolume(fileVol[i]);
-		}
-	}
-	int t = 8;
 }
 
+//=============================================================================
+// セグメント停止(全て)
+//=============================================================================
+void StopSound(void)
+{
+	// 一時停止
+	for(int nCntSound = 0; nCntSound < SOUND_LABEL_MAX; nCntSound++)
+	{
+		if(g_apSourceVoice[nCntSound])
+		{
+			// 一時停止
+			g_apSourceVoice[nCntSound]->Stop(0);
+		}
+	}
+}
+
+//=============================================================================
+// チャンクのチェック
+//=============================================================================
 HRESULT CheckChunk(HANDLE hFile, DWORD format, DWORD *pChunkSize, DWORD *pChunkDataPosition)
 {
 	HRESULT hr = S_OK;
@@ -439,74 +300,78 @@ HRESULT CheckChunk(HANDLE hFile, DWORD format, DWORD *pChunkSize, DWORD *pChunkD
 	DWORD dwFileType;
 	DWORD dwBytesRead = 0;
 	DWORD dwOffset = 0;
-
-	if (SetFilePointer(hFile, 0, NULL, FILE_BEGIN) == INVALID_SET_FILE_POINTER)
+	
+	if(SetFilePointer(hFile, 0, NULL, FILE_BEGIN) == INVALID_SET_FILE_POINTER)
 	{// ファイルポインタを先頭に移動
 		return HRESULT_FROM_WIN32(GetLastError());
 	}
-
-	while (hr == S_OK)
+	
+	while(hr == S_OK)
 	{
-		if (ReadFile(hFile, &dwChunkType, sizeof(DWORD), &dwRead, NULL) == 0)
+		if(ReadFile(hFile, &dwChunkType, sizeof(DWORD), &dwRead, NULL) == 0)
 		{// チャンクの読み込み
 			hr = HRESULT_FROM_WIN32(GetLastError());
 		}
 
-		if (ReadFile(hFile, &dwChunkDataSize, sizeof(DWORD), &dwRead, NULL) == 0)
+		if(ReadFile(hFile, &dwChunkDataSize, sizeof(DWORD), &dwRead, NULL) == 0)
 		{// チャンクデータの読み込み
 			hr = HRESULT_FROM_WIN32(GetLastError());
 		}
 
-		switch (dwChunkType)
+		switch(dwChunkType)
 		{
 		case 'FFIR':
-			dwRIFFDataSize = dwChunkDataSize;
+			dwRIFFDataSize  = dwChunkDataSize;
 			dwChunkDataSize = 4;
-			if (ReadFile(hFile, &dwFileType, sizeof(DWORD), &dwRead, NULL) == 0)
+			if(ReadFile(hFile, &dwFileType, sizeof(DWORD), &dwRead, NULL) == 0)
 			{// ファイルタイプの読み込み
 				hr = HRESULT_FROM_WIN32(GetLastError());
 			}
 			break;
 
 		default:
-			if (SetFilePointer(hFile, dwChunkDataSize, NULL, FILE_CURRENT) == INVALID_SET_FILE_POINTER)
+			if(SetFilePointer(hFile, dwChunkDataSize, NULL, FILE_CURRENT) == INVALID_SET_FILE_POINTER)
 			{// ファイルポインタをチャンクデータ分移動
 				return HRESULT_FROM_WIN32(GetLastError());
 			}
 		}
 
 		dwOffset += sizeof(DWORD) * 2;
-		if (dwChunkType == format)
+		if(dwChunkType == format)
 		{
-			*pChunkSize = dwChunkDataSize;
+			*pChunkSize         = dwChunkDataSize;
 			*pChunkDataPosition = dwOffset;
 
 			return S_OK;
 		}
 
 		dwOffset += dwChunkDataSize;
-		if (dwBytesRead >= dwRIFFDataSize)
+		if(dwBytesRead >= dwRIFFDataSize)
 		{
 			return S_FALSE;
 		}
 	}
-
+	
 	return S_OK;
 }
 
+//=============================================================================
+// チャンクデータの読み込み
+//=============================================================================
 HRESULT ReadChunkData(HANDLE hFile, void *pBuffer, DWORD dwBuffersize, DWORD dwBufferoffset)
 {
 	DWORD dwRead;
-
-	if (SetFilePointer(hFile, dwBufferoffset, NULL, FILE_BEGIN) == INVALID_SET_FILE_POINTER)
+	
+	if(SetFilePointer(hFile, dwBufferoffset, NULL, FILE_BEGIN) == INVALID_SET_FILE_POINTER)
 	{// ファイルポインタを指定位置まで移動
 		return HRESULT_FROM_WIN32(GetLastError());
 	}
 
-	if (ReadFile(hFile, pBuffer, dwBuffersize, &dwRead, NULL) == 0)
+	if(ReadFile(hFile, pBuffer, dwBuffersize, &dwRead, NULL) == 0)
 	{// データの読み込み
 		return HRESULT_FROM_WIN32(GetLastError());
 	}
-
+	
 	return S_OK;
 }
+

@@ -3,7 +3,7 @@
 #include"input.h"
 #include"texture.h"
 #include<stdlib.h>
-#include"sound.h"
+//#include"sound.h"
 
 
 
@@ -30,7 +30,7 @@ void EnemyInit() {
 	enemyMovePattern = 1;
 }
 void EnemyUpdate() {
-	if (Keyboard_IsTrigger(DIK_SPACE)) {
+	if (oldPos == 10) {
 		oldPos = -1;
 	}
 	if (GetawaFlag(nowPos) == true)
@@ -41,8 +41,8 @@ void EnemyUpdate() {
 					Enemy.position.x -= WIDE;
 					oldPos = nowPos;
 					nowPos -= 1;
-					Audio::GetInstance().PlaySE("paan.wav");
 				}
+		
 		}
 		if (Keyboard_IsTrigger(DIK_D)) {
 			if (Enemy.position.x != WIDE * Stage_width) {
@@ -50,8 +50,8 @@ void EnemyUpdate() {
 					Enemy.position.x += WIDE;
 					oldPos = nowPos;
 					nowPos += 1;
-					Audio::GetInstance().PlaySE("paan.wav");
 				}
+			
 			}
 		}
 		if (Keyboard_IsTrigger(DIK_W)) {
@@ -59,8 +59,7 @@ void EnemyUpdate() {
 				if (GetawaFlag(nowPos + Stage_width + 1) == true) {
 					Enemy.position.z += WIDE;
 					oldPos = nowPos;
-					nowPos += Stage_width + 1;
-					Audio::GetInstance().PlaySE("paan.wav");
+					nowPos += Stage_width + 1;		
 				}
 			}
 		}
@@ -69,8 +68,7 @@ void EnemyUpdate() {
 				if (GetawaFlag(nowPos - Stage_width - 1) == true) {
 					Enemy.position.z -= WIDE;
 					oldPos = nowPos;
-					nowPos -= Stage_width + 1;
-					Audio::GetInstance().PlaySE("paan.wav");
+					nowPos -= Stage_width + 1;	
 				}
 			}
 		}
@@ -103,7 +101,6 @@ void EnemyMove()
 					Enemy.position.z += WIDE;
 					oldPos = nowPos;
 					nowPos += Stage_width + 1;
-					Audio::GetInstance().PlaySE("paan.wav");
 				}
 			}
 		}
@@ -114,9 +111,7 @@ void EnemyMove()
 				if (GetawaFlag(nowPos + 1) == true) {
 					Enemy.position.x += WIDE;
 					oldPos = nowPos;
-					nowPos += 1;
-					Audio::GetInstance().PlaySE("paan.wav");
-				}
+					nowPos += 1;				}
 			}
 		}
 		break;
@@ -128,8 +123,7 @@ void EnemyMove()
 				if (GetawaFlag(nowPos + Stage_width + 1) == true) {
 					Enemy.position.z += WIDE;
 					oldPos = nowPos;
-					nowPos += Stage_width + 1;
-					Audio::GetInstance().PlaySE("paan.wav");
+					nowPos += Stage_width + 1;	
 				}
 			}
 		}
@@ -140,8 +134,7 @@ void EnemyMove()
 				if (GetawaFlag(nowPos + 1) == true) {
 					Enemy.position.x += WIDE;
 					oldPos = nowPos;
-					nowPos += 1;
-					Audio::GetInstance().PlaySE("paan.wav");
+					nowPos += 1;	
 				}
 			}
 		}
@@ -154,8 +147,7 @@ void EnemyMove()
 				if (GetawaFlag(nowPos - Stage_width - 1) == true) {
 					Enemy.position.z -= WIDE;
 					oldPos = nowPos;
-					nowPos -= Stage_width + 1;
-					Audio::GetInstance().PlaySE("paan.wav");
+					nowPos -= Stage_width + 1;	
 				}
 			}
 		}
@@ -166,8 +158,7 @@ void EnemyMove()
 				if (GetawaFlag(nowPos + 1) == true) {
 					Enemy.position.x += WIDE;
 					oldPos = nowPos;
-					nowPos += 1;
-					Audio::GetInstance().PlaySE("paan.wav");
+					nowPos += 1;			
 				}
 			}
 		}

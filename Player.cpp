@@ -36,7 +36,6 @@ void PlayerUpdate() {
 					Player.position.x -= WIDE;
 					oldPos = nowPos;
 					nowPos -= 1;
-					Audio::GetInstance().PlaySE("paan.wav");
 					EnemyMove();
 				}
 		}
@@ -46,7 +45,6 @@ void PlayerUpdate() {
 					Player.position.x += WIDE;
 					oldPos = nowPos;
 					nowPos += 1;
-					Audio::GetInstance().PlaySE("paan.wav");
 					EnemyMove();
 				}
 			}
@@ -57,7 +55,6 @@ void PlayerUpdate() {
 					Player.position.z += WIDE;
 					oldPos = nowPos;
 					nowPos += Stage_width + 1;
-					Audio::GetInstance().PlaySE("paan.wav");
 					EnemyMove();
 				}
 			}
@@ -68,7 +65,6 @@ void PlayerUpdate() {
 					Player.position.z -= WIDE;
 					oldPos = nowPos;
 					nowPos -= Stage_width + 1;
-					Audio::GetInstance().PlaySE("paan.wav");
 					EnemyMove();
 				}
 			}
