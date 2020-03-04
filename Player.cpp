@@ -31,17 +31,19 @@ void PlayerUpdate() {
 	if (GetawaFlag(nowPos) == true)
 	{
 		if (Keyboard_IsTrigger(DIK_LEFT)) {
-			if (Player.position.x != 0)
-				if (GetawaFlag(nowPos - 1) == true) {
+			if (Player.position.x != 0) {
+				if (GetawaFlag(nowPos - 1) == true && GetRWallFlag(nowPos - 1) == false) {
 					Player.position.x -= WIDE;
 					oldPos = nowPos;
 					nowPos -= 1;
 					EnemyMove();
 				}
+			}
+		
 		}
 		if (Keyboard_IsTrigger(DIK_RIGHT)) {
 			if (Player.position.x != WIDE * Stage_width) {
-				if (GetawaFlag(nowPos + 1) == true) {
+				if (GetawaFlag(nowPos + 1) == true && GetRWallFlag(nowPos) == false) {
 					Player.position.x += WIDE;
 					oldPos = nowPos;
 					nowPos += 1;
@@ -51,7 +53,7 @@ void PlayerUpdate() {
 		}
 		if (Keyboard_IsTrigger(DIK_UP)) {
 			if (Player.position.z != WIDE * Stage_width) {
-				if (GetawaFlag(nowPos + Stage_width + 1) == true) {
+				if (GetawaFlag(nowPos + Stage_width + 1) == true && GetFWallFlag(nowPos) == false) {
 					Player.position.z += WIDE;
 					oldPos = nowPos;
 					nowPos += Stage_width + 1;
@@ -61,7 +63,7 @@ void PlayerUpdate() {
 		}
 		if (Keyboard_IsTrigger(DIK_DOWN)) {
 			if (Player.position.z != 0) {
-				if (GetawaFlag(nowPos - Stage_width - 1) == true) {
+				if (GetawaFlag(nowPos - Stage_width - 1) == true && GetFWallFlag(nowPos - Stage_width - 1) == false) {
 					Player.position.z -= WIDE;
 					oldPos = nowPos;
 					nowPos -= Stage_width + 1;

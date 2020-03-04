@@ -46,6 +46,8 @@ public:
 	bool isUse;
 	bool isReset;
 	bool isGoal;
+	bool isFWall;
+	bool isRWall;
 	Plane(){ isDraw = false; }
 	Plane(D3DXVECTOR3 pos, D3DXVECTOR3 size) {
 		position = pos;

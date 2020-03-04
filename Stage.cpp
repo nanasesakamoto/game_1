@@ -15,6 +15,8 @@ static bool Goal;
 static int SEcount;
 
 Plane awa[awa_MAX];
+Plane Fwall[awa_MAX];
+Plane Rwall[awa_MAX];
 int awaFlag[awa_MAX];
 int timer[awa_MAX];
 
@@ -41,6 +43,8 @@ void StageInit() {
 		awa[i].isUse = true;
 		awa[i].isReset = false;
 		awa[i].isGoal = false;
+		awa[i].isFWall = false;
+		awa[i].isRWall = false;
 		awaFlag[i] = 0;
 		timer[i] = 0;
 
@@ -49,11 +53,27 @@ void StageInit() {
 		awa[i].position.z = awa[i].z;
 		awa[i].rotation = D3DXVECTOR3(0, 0, 0);
 		awa[i].scale = D3DXVECTOR3(2, 0, 2);
+
+		Fwall[i].position.x = awa[i].x;
+		Fwall[i].position.y = 0.1f;
+		Fwall[i].position.z = awa[i].z + 1.0f;
+		Fwall[i].rotation = D3DXVECTOR3(0, 0, 0);
+		Fwall[i].scale = D3DXVECTOR3(2, 0, 0.5);
+
+		Rwall[i].position.x = awa[i].x + 1.0f;
+		Rwall[i].position.y = 0.1f;
+		Rwall[i].position.z = awa[i].z;
+		Rwall[i].rotation = D3DXVECTOR3(0, 0, 0);
+		Rwall[i].scale = D3DXVECTOR3(0.5, 0, 2);
 	}
 	//リセットマス
 	awa[10].isReset = true;
 	//ゴールマス
 	awa[89].isGoal = true;
+	//縦壁
+	awa[10].isFWall = true;
+	//横壁
+	awa[11].isRWall = true;
 }
 
 void StageUpdate() {
@@ -132,7 +152,6 @@ void StageUpdate() {
 void StageDraw() {
 
 	for (int i = 0; i < awa_MAX; i++) {
-
 		if (awa[i].isReset == true) {
 			if (awa[i].isUse == true) {
 				awa[i].Draw(TEXTURE_INDEX_RESET, 255);
@@ -158,6 +177,13 @@ void StageDraw() {
 			awaFlag[i]++;
 		}
 
+		if (awa[i].isFWall == true) {
+			Fwall[i].Draw(TEXTURE_INDEX_WALL, 255);
+		}
+		if (awa[i].isRWall == true) {
+			Rwall[i].Draw(TEXTURE_INDEX_WALL, 255);
+		}
+
 	}
 	
 }
@@ -175,4 +201,10 @@ bool GetawaFlag(int i)
 }
 bool GetawaResetFlag(int i) {
 	return awa[i].isReset;
+}
+bool GetFWallFlag(int i) {
+	return awa[i].isFWall;
+}
+bool GetRWallFlag(int i) {
+	return awa[i].isRWall;
 }

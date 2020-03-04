@@ -35,6 +35,7 @@ static const TextureFile g_TextureFiles[] = {
 	{ "asset/texture/burst03.png",511,511 },
 	{ "asset/texture/赤床.png",511,511 },
 	{ "asset/texture/reset.png",511,511 },
+	{ "asset/texture/Wall.png",511,511 },
 };
 // 読み込みテクスチャ数
 static const int TEXTURE_FILE_COUNT = sizeof(g_TextureFiles) / sizeof(g_TextureFiles[0]);
